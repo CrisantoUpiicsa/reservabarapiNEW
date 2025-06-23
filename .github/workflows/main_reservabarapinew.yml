@@ -90,3 +90,4 @@ jobs:
           # esto DEBE ser '/backend'.
           app-location: '/'
           # *****************************************************************
+          python-version: '3.11'
