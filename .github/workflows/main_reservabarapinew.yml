@@ -28,22 +28,22 @@ jobs:
         run: |
           python -m venv venv
           source venv/bin/activate
-      
+
       - name: Install dependencies
         run: pip install -r requirements.txt
         
       # Optional: Add step to run tests here (PyTest, Django test suites, etc.)
 
       - name: Zip artifact for deployment
-        run: zip release.zip ./* -r
+        # Asegura que el contenido del directorio actual (donde están main.py y requirements.txt)
+        # se zipee directamente en la raíz del archivo release.zip, excluyendo el venv.
+        run: zip -r release.zip . -x "*venv/*"
 
       - name: Upload artifact for deployment jobs
         uses: actions/upload-artifact@v4
         with:
           name: python-app
-          path: |
-            release.zip
-            !venv/
+          path: release.zip # Solo subimos el archivo zip
 
   deploy:
     runs-on: ubuntu-latest
@@ -62,9 +62,9 @@ jobs:
           name: python-app
 
       - name: Unzip artifact for deployment
+        # Esto extrae el contenido del 'release.zip' en el directorio de trabajo actual del runner
         run: unzip release.zip
 
-      
       - name: Login to Azure
         uses: azure/login@v2
         with:
@@ -78,5 +78,15 @@ jobs:
         with:
           app-name: 'reservabarapiNEW'
           slot-name: 'Production'
+          # *****************************************************************
+          # ** CAMBIOS CLAVE AQUÍ: **
+          # 'package: '.' le dice a la acción que el contenido a desplegar
+          # es el directorio de trabajo actual (donde se descomprimió el zip).
+          package: '.'
+          # 'app-location: '/' le dice a Oryx (el sistema de compilación de Azure)
+          # que la raíz de tu aplicación Python (donde está main.py y requirements.txt)
+          # está en la raíz de lo que se desplegó.
+          # Si tu main.py está en una subcarpeta (ej. 'backend/main.py' dentro del zip),
+          # esto DEBE ser '/backend'.
           app-location: '/'
-          
+          # *****************************************************************
