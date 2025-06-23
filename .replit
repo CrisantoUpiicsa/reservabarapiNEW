@@ -1,0 +1,16 @@
+language = "python3"
+entrypoint = "main.py" # Asegúrate de que tu archivo principal se llama main.py
+run = "python3 -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+modules = ["python-3.11"]
+
+[nix]
+channel = "stable-24_05"
+packages = ["libxcrypt"]
+
+[deployment]
+run = ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port 8080"]
+
+[[ports]]
+localPort = 8000
+externalPort = 80
+
