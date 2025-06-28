@@ -20,7 +20,7 @@ app = FastAPI(
 @app.on_event("startup")
 async def startup_event():
     print("Iniciando la aplicación y conectando la base de datos...")
-    # create_db_tables() # Descomentar solo para la primera ejecución de desarrollo si no usas migraciones
+    # create_db_tables() # Descomentar solo para la primera ejecución de desarrollo si no usas migraciones de create
     print("Base de datos lista para conexiones.")
 
 @app.on_event("shutdown")
