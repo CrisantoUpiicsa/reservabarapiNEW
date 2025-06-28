@@ -1,9 +1,9 @@
 # app/database.py
 import os
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession # Importar para async
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker # Importar para async
 from sqlalchemy.sql import func # Para func.now()
 
 from .config import settings
@@ -17,24 +17,38 @@ from .config import settings
 # Usamos os.environ.get('HOME', '/app') como fallback seguro, aunque 'HOME' debería estar presente.
 CERT_PATH = os.path.join(os.environ.get('HOME', '/app'), 'site', 'wwwroot', 'certs', 'DigiCertGlobalRootG2.crt.pem')
 
+# Configuración de los argumentos de conexión.
+connect_args = {}
+
+# Verificar si el archivo del certificado existe antes de intentar usarlo.
+# Esto es crucial para evitar errores si el archivo no se despliega correctamente.
+if os.path.exists(CERT_PATH):
+    connect_args["ssl"] = CERT_PATH
+    connect_args["sslmode"] = "require" # asyncpg pide que sslmode esté presente con un valor válido
+    print(f"DEBUG: Certificado SSL encontrado en: {CERT_PATH}. SSL configurado como 'require'.")
+else:
+    # Si el certificado no se encuentra, aún intentamos con sslmode=require.
+    # Esto puede funcionar si el entorno de Azure maneja el SSL de forma transparente
+    # o si el certificado ya está en el sistema operativo del contenedor.
+    connect_args["sslmode"] = "require"
+    print(f"ADVERTENCIA: Certificado SSL NO encontrado en: {CERT_PATH}. Se intentará conectar con sslmode='require'.")
+
+
 # Asegúrate de que settings.DATABASE_URL no contenga ningún parámetro sslmode o ssl.
-# Por ejemplo, debería ser:
-# "postgresql+asyncpg://adminuser:TU_CONTRASEÑA@reservabar-postgres-server.postgres.database.azure.com:5432/postgres"
+# Tu confirmación de que DATABASE_URL en Azure es limpia es excelente:
+# "postgresql+asyncpg://adminuser:CrisantoUpíicsa2021@reservabar-postgres-server.postgres.database.azure.com:5432/postgres"
 
 # Motor de base de datos asíncrono
-# Se pasa el certificado SSL a través de connect_args para que asyncpg lo use.
+# Se pasan los argumentos de conexión, incluyendo la configuración SSL/TLS.
 async_engine = create_async_engine(
     settings.DATABASE_URL,
     echo=True, # Útil para ver las queries de SQLAlchemy en la consola
-    connect_args={
-        "ssl": CERT_PATH,
-        # Nota: No incluir aquí 'sslmode', 'ssl', o 'sslrootcert'
-        # ya que 'ssl' con la ruta del archivo es la forma preferida por asyncpg.
-    }
+    connect_args=connect_args, # Pasa los argumentos de conexión SSL aquí
+    future=True # Usar las API de SQLAlchemy más recientes
 )
 
 # SessionLocal asíncrono
-AsyncSessionLocal = sessionmaker(
+AsyncSessionLocal = async_sessionmaker( # Cambiado de sessionmaker a async_sessionmaker
     autocommit=False,
     autoflush=False,
     bind=async_engine,
@@ -57,6 +71,7 @@ async def get_db():
 async def create_db_tables():
     async with async_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        print("DEBUG: Tablas de la base de datos creadas/verificadas.")
 
 # --- Modelos ORM (SQLAlchemy) ---
 
