@@ -10,16 +10,34 @@ from .config import settings
 
 # --- Configuración de la conexión a la base de datos ---
 
-# No necesitamos definir CERT_PATH ni connect_args aquí.
-# La configuración SSL (sslmode=require) se maneja directamente en la DATABASE_URL
-# según lo que hemos configurado en app/config.py.
-# Esto simplifica la configuración y confía en que Azure y asyncpg gestionen la validación CA.
+# Define la ruta al certificado CA raíz dentro del contenedor de Azure App Service.
+# Asegúrate de que este nombre de archivo coincida con el que descargaste y subiste.
+# Para Azure Flexible Server, a menudo es 'DigiCertGlobalRootG2.crt.pem'.
+# Puedes verificar el nombre exacto del archivo que descargaste.
+CERT_FILE_NAME = "DigiCertGlobalRootG2.crt.pem" # <--- ¡VERIFICA ESTE NOMBRE!
+CA_CERT_PATH = os.path.join(os.environ.get('HOME', '/app'), 'site', 'wwwroot', 'certs', CERT_FILE_NAME)
+
+# Configuración de los argumentos de conexión para asyncpg
+connect_args = {
+    "ssl": "require" # Asegura que el modo SSL es 'require'
+}
+
+# Si el certificado CA existe, lo añadimos a los connect_args
+if os.path.exists(CA_CERT_PATH):
+    connect_args["sslrootcert"] = CA_CERT_PATH
+    print(f"DEBUG: Certificado CA raíz encontrado en: {CA_CERT_PATH}. Se usará para la validación SSL.")
+else:
+    print(f"ADVERTENCIA: Certificado CA raíz NO encontrado en: {CA_CERT_PATH}. La conexión SSL puede fallar si la validación del certificado es estricta.")
+    # En este escenario, la conexión seguirá intentando ssl=require,
+    # pero sin la validación del certificado del servidor. Esto podría
+    # aún ser la causa del error si el servidor exige verificación.
+
 
 # Motor de base de datos asíncrono
-# SQLAlchemy y asyncpg deberían leer sslmode=require directamente de la URL.
 async_engine = create_async_engine(
     settings.DATABASE_URL,
     echo=True, # Útil para ver las queries de SQLAlchemy en la consola
+    connect_args=connect_args, # Pasa los argumentos de conexión SSL aquí
     future=True # Usar las API de SQLAlchemy más recientes
 )
 
@@ -43,7 +61,6 @@ async def get_db():
             await session.close()
 
 # Función para crear las tablas
-# Esta función ahora es asíncrona y usa async_engine
 async def create_db_tables():
     async with async_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
