@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     PROJECT_VERSION: str = "1.0.0"
     PROJECT_DESCRIPTION: str = "API para la gestión de reservas de mesas, usuarios y promociones de un bar."
 
-    DATABASE_URL: str = "sqlite+aiosqlite:///./sql_app.db" # Usamos SQLite por defecto para desarrollo local fácil
+    DATABASE_URL: str = "postgresql+asyncpg://adminuser:CrisantoUpíicsa2021@reservabar-postgres-server.postgres.database.azure.com:5432/postgres" # Usamos SQLite por defecto para desarrollo local fácil
 
     SECRET_KEY: str = "supersecretkey" # ¡CAMBIA ESTO EN PRODUCCIÓN! Usa una cadena aleatoria y compleja.
     ALGORITHM: str = "HS256"
