@@ -1,6 +1,6 @@
 # app/database.py
 import os
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession # Importar para async
@@ -8,14 +8,29 @@ from sqlalchemy.sql import func # Para func.now()
 
 from .config import settings
 
-# Configuración de la URL de la base de datos desde settings
-# Para SQLite asíncrono: DATABASE_URL="sqlite+aiosqlite:///./sql_app.db"
-# (Este valor debe estar en tu .env o en las variables de entorno de Replit)
+# --- Configuración de la conexión a la base de datos ---
+
+# Define la ruta al certificado SSL raíz dentro del contenedor de Azure App Service.
+# 'HOME' es una variable de entorno que apunta a '/home' en App Service.
+# Tu aplicación se despliega en '/home/site/wwwroot'.
+# El certificado debe estar en 'site/wwwroot/certs/DigiCertGlobalRootG2.crt.pem'.
+# Usamos os.environ.get('HOME', '/app') como fallback seguro, aunque 'HOME' debería estar presente.
+CERT_PATH = os.path.join(os.environ.get('HOME', '/app'), 'site', 'wwwroot', 'certs', 'DigiCertGlobalRootG2.crt.pem')
+
+# Asegúrate de que settings.DATABASE_URL no contenga ningún parámetro sslmode o ssl.
+# Por ejemplo, debería ser:
+# "postgresql+asyncpg://adminuser:TU_CONTRASEÑA@reservabar-postgres-server.postgres.database.azure.com:5432/postgres"
 
 # Motor de base de datos asíncrono
+# Se pasa el certificado SSL a través de connect_args para que asyncpg lo use.
 async_engine = create_async_engine(
     settings.DATABASE_URL,
-    echo=True # Útil para ver las queries de SQLAlchemy en la consola
+    echo=True, # Útil para ver las queries de SQLAlchemy en la consola
+    connect_args={
+        "ssl": CERT_PATH,
+        # Nota: No incluir aquí 'sslmode', 'ssl', o 'sslrootcert'
+        # ya que 'ssl' con la ruta del archivo es la forma preferida por asyncpg.
+    }
 )
 
 # SessionLocal asíncrono
