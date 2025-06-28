@@ -1,14 +1,13 @@
 language = "python3"
-entrypoint = "main.py" # Asegúrate de que tu archivo principal se llama main.py
-run = "python3 -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
-modules = ["python-3.11"]
+run = "uvicorn undefined:app --host 0.0.0.0 --port 3000"
+modules = ["python-3.12"]
 
 [nix]
 channel = "stable-24_05"
-packages = ["libxcrypt"]
+packages = ["libxcrypt", "postgresql"]
 
 [deployment]
-run = ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port 8080"]
+run = ["sh", "-c", "uvicorn undefined:app --host 0.0.0.0 --port 3000"]
 
 [[ports]]
 localPort = 8000
